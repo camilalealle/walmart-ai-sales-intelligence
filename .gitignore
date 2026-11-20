@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Jupyter
+.jupyter/
+
+# Environment variables and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code local settings
+.vscode/
+
+# Tableau temporary files
+*.twbr
+*.twbr*
+*.hyper.lock
+
+# Temporary files
+*.tmp
+*.log
