@@ -3,7 +3,7 @@
 # Walmart Sales Intelligence
 ### Python | Pandas | Tableau Studio | AI-Assisted Data App
 
-**[▶ Open interactive dashboard](https://camilalealle.github.io/walmart-ai-sales-intelligence/)** · No account required once GitHub Pages is enabled
+**[▶ Explore the Interactive Dashboard](https://camilalealle.github.io/walmart-ai-sales-intelligence/)** · Free access · No login required
 
 An end-to-end retail analytics project covering weekly sales for **45 Walmart stores and 15 departments** (January–October 2012). I prepared and validated the data in Python, built an interactive Data App with Tableau Studio, and adapted it into a standalone web app anyone can open.
 
