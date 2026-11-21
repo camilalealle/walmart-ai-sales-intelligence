@@ -323,8 +323,8 @@
     series.forEach(function (s) { byT[s.t] = s; });
     // The chart fills its box: measure it so SVG text stays the same size as the page text.
     var box = refs.chart.getBoundingClientRect();
-    var W = Math.max(400, Math.round(box.width)), H = Math.max(140, Math.round(box.height));
-    var mg = { t: 12, r: 16, b: 28, l: 64 };
+    var W = Math.max(260, Math.round(box.width)), H = Math.max(140, Math.round(box.height));
+    var mg = { t: 12, r: W < 500 ? 10 : 16, b: 28, l: W < 500 ? 52 : 64 };
     var iw = W - mg.l - mg.r, ih = H - mg.t - mg.b;
     var vals = [];
     lines.forEach(function (ln) { ln.pts.forEach(function (s) { vals.push(s[m.id]); }); });
@@ -357,11 +357,14 @@
       }
     });
 
-    // X axis labels (about 10 evenly spaced).
-    var every = Math.max(1, Math.ceil(weeks.length / 10));
+    // X axis labels: about 10 on wide screens, fewer on narrow ones so they never overlap.
+    var maxLabels = Math.max(3, Math.min(10, Math.floor(iw / 80)));
+    var every = Math.max(1, Math.ceil(weeks.length / maxLabels));
     series.forEach(function (s, idx) {
       if (idx % every === 0) {
-        var t = svgEl('text', { x: X(idx), y: H - 8, class: 'axis', 'text-anchor': 'middle' });
+        var lx = X(idx);
+        var anchor = lx > W - mg.r - 24 ? 'end' : (lx < mg.l + 24 && idx > 0 ? 'start' : 'middle');
+        var t = svgEl('text', { x: anchor === 'end' ? Math.min(lx, W - 2) : lx, y: H - 8, class: 'axis', 'text-anchor': anchor });
         t.textContent = fmtShort(s.t);
         svg.appendChild(t);
       }

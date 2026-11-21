@@ -384,9 +384,74 @@ button { font: inherit; color: inherit; cursor: pointer; }
 [data-theme="dark"] { --lift-color: #c084fc; --total-color: #818cf8; }
 .lift-note { font-size: 13px; color: var(--muted); }
 
-/* Standalone web version: on short or narrow screens, keep the one-screen layout at a
-   comfortable minimum size and let the page scroll instead of squeezing the panels. */
-@media (max-height: 900px), (max-width: 1280px) {
+/* ---------------------------------------------------------------------------------------------
+   Standalone web version: responsive layout
+   --------------------------------------------------------------------------------------------- */
+
+/* Wide but short screens (e.g. 1366x768 laptops): keep the desktop layout at a comfortable
+   height and let the page scroll instead of squeezing the panels. */
+@media (min-width: 1181px) and (max-height: 900px) {
   html, body { overflow: auto; height: auto; }
-  #app { height: 900px; min-width: 1280px; }
+  #app { height: 900px; }
+}
+
+/* Tablets and small laptops: the page scrolls and each block gets its own height. */
+@media (max-width: 1180px) {
+  html, body { overflow: auto; height: auto; }
+  #app { height: auto; min-height: 100vh; overflow: visible; grid-template-rows: none; padding: 20px 22px 28px; }
+  .filters { flex-wrap: wrap; gap: 12px 22px; }
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi-pair { order: 2; grid-column: span 2; }
+  .row4 { grid-template-columns: minmax(0, 1fr); }
+  .trend-card { height: 420px; }
+  .row5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .row5 > .panel { height: 380px; }
+  .row5 > .panel:last-child { grid-column: 1 / -1; height: auto; max-height: 380px; }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  #app { padding: 16px 14px 24px; gap: 12px; }
+  .header { flex-direction: column; gap: 10px; }
+  .header h1 { font-size: 27px; }
+  .subtitle { font-size: 14px; }
+  .head-right { width: 100%; justify-content: space-between; gap: 12px; }
+  .credit { font-size: 13px; }
+  .theme-btn { padding: 7px 14px; font-size: 14px; }
+
+  .filters { flex-direction: column; align-items: stretch; gap: 10px; }
+  .fgroup { flex: 1 1 auto; justify-content: space-between; min-width: 0; }
+  .fgroup .flabel { flex: 0 0 64px; }
+  .fgroup > :not(.flabel) { flex: 1 1 auto; min-width: 0; }
+  .pills { flex-wrap: wrap; }
+  .filters .pill { padding: 6px 12px; }
+  .daterange { min-width: 0; }
+  .date-in { flex: 1 1 0; min-width: 0; width: auto; }
+  .dd, .dd-btn { width: 100%; min-width: 0; }
+  .dd-menu { left: 0; right: 0; width: auto; min-width: 0; }
+  .filters .reset-btn { margin-left: 0; align-self: flex-start; }
+
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kpi-pair { order: 2; grid-column: 1 / -1; }
+  .kpi { padding: 12px 14px 10px; }
+  .kpi-value { font-size: 27px; }
+  .kpi.compact .kpi-value { font-size: 27px; }
+  .spark { height: 30px; }
+
+  .trend-card { height: 360px; padding: 12px 12px 8px; }
+  .trend-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .trend-ctrls { flex-wrap: wrap; gap: 6px; }
+  .tab { padding: 5px 10px; font-size: 13px; }
+  .panel-title { font-size: 17px; }
+  .axis { font-size: 11px; }
+
+  .row5 { grid-template-columns: minmax(0, 1fr); }
+  .row5 > .panel, .row5 > .panel:last-child { grid-column: auto; height: 360px; max-height: none; }
+  .row5 > .panel:last-child { height: auto; }
+  .panel { padding: 12px 14px; }
+  .bar-row { grid-template-columns: minmax(70px, 40%) 1fr 64px; font-size: 14px; }
+  .type-mini { overflow-x: auto; }
+  .type-mini .tbl { font-size: 12px; }
+  .type-mini .tbl th, .type-mini .tbl td { padding: 3px 5px; }
+  .lift-value { font-size: 28px; }
 }
