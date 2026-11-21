@@ -46,7 +46,11 @@
   }
 
   function money(n) { return (n < 0 ? '-$' : '$') + compact(Math.abs(n)); }
-  function pct(n) { return (n >= 0 ? '+' : '') + nf1.format(n * 100) + '%'; }
+  function pct(n) {
+    // null = not computable (e.g. no holiday weeks in the selection): show a dash, never 0%.
+    if (n === null || n === undefined || !isFinite(n)) { return '—'; }
+    return (n >= 0 ? '+' : '') + nf1.format(n * 100) + '%';
+  }
   function int(n) { return nf0.format(n); }
 
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -170,8 +174,9 @@
       stores: nStores,
       depts: Object.keys(deptSet).length,
       // Holiday lift = avg sales per store-week in holiday weeks vs non-holiday weeks.
-      lift: nH && nN && nAvg ? (hAvg - nAvg) / nAvg : 0,
-      holAvg: hAvg, nonAvg: nAvg, nH: nH, nN: nN
+      // null when the selection lacks holiday or non-holiday store-weeks (the lift can't be computed).
+      lift: nH && nN && nAvg ? (hAvg - nAvg) / nAvg : null,
+      holAvg: nH ? hAvg : null, nonAvg: nN ? nAvg : null, nH: nH, nN: nN
     };
   }
 
@@ -224,12 +229,18 @@
     var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'spark', preserveAspectRatio: 'none' });
     if (series.length < 2) { return svg; }
     var vals = series.map(function (s) { return s[key]; });
-    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    // Values that can't be computed (null) are left as gaps instead of being drawn as 0.
+    var ok = vals.filter(function (v) { return v !== null && v !== undefined && isFinite(v); });
+    if (ok.length < 2) { return svg; }
+    var mn = Math.min.apply(null, ok), mx = Math.max.apply(null, ok);
     var rng = mx - mn || 1;
-    var pts = vals.map(function (v, i) {
-      return [pad + (W - 2 * pad) * i / (vals.length - 1), pad + (H - 2 * pad) * (1 - (v - mn) / rng)];
+    var d = '', pen = false;
+    vals.forEach(function (v, i) {
+      if (v === null || v === undefined || !isFinite(v)) { pen = false; return; }
+      var x = pad + (W - 2 * pad) * i / (vals.length - 1), y = pad + (H - 2 * pad) * (1 - (v - mn) / rng);
+      d += (pen ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+      pen = true;
     });
-    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
     svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: color, 'stroke-width': 2,
       'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke' }));
     return svg;
@@ -241,7 +252,8 @@
     var hi = ts.length ? Math.max.apply(null, ts) : null;
     var active = [];
     if (STATE.type !== 'All') { active.push('Type ' + STATE.type); }
-    if (STATE.dateFrom || STATE.dateTo) { active.push((STATE.dateFrom || '…') + ' → ' + (STATE.dateTo || '…')); }
+    // The date range itself is already the first part of the subtitle.
+    if (STATE.dateFrom || STATE.dateTo) { active.push('Custom weeks'); }
     if (STATE.store !== 'All') { active.push('Store ' + STATE.store); }
     if (STATE.dept !== 'All') { active.push(STATE.dept); }
     var stores = {};
@@ -622,15 +634,18 @@
   function renderHolidayPanel(rows) {
     var body = panelShell(refs.p4, 'Holiday vs non-holiday', [{ label: 'Avg sales per store-week' }]);
     var k = kpis(rows);
+    // Only groups present in the selection get a bar; a missing group is never drawn as $0.
     bars(body, [
       { key: 'hol', label: 'Holiday weeks', v: k.holAvg },
       { key: 'non', label: 'Non-holiday weeks', v: k.nonAvg }
-    ], 'var(--lift-color)', null, null, money);
+    ].filter(function (it) { return it.v !== null; }), 'var(--lift-color)', null, null, money);
     var lift = el('div', 'lift');
     lift.appendChild(el('div', 'lift-label', 'Holiday Lift'));
-    lift.appendChild(el('div', 'lift-value', k.nH && k.nN ? pct(k.lift) : 'n/a'));
-    lift.appendChild(el('div', 'lift-note',
-      int(k.nH) + ' holiday store-weeks vs ' + int(k.nN) + ' non-holiday store-weeks'));
+    lift.appendChild(el('div', 'lift-value', pct(k.lift)));
+    var note = k.nH && k.nN
+      ? int(k.nH) + ' holiday store-weeks vs ' + int(k.nN) + ' non-holiday store-weeks'
+      : (k.nH ? 'Only holiday weeks' : 'No holiday weeks') + ' in the selected range, so the lift can\'t be calculated.';
+    lift.appendChild(el('div', 'lift-note', note));
     body.appendChild(lift);
   }
 
@@ -726,9 +741,9 @@
       { value: 'All', label: 'All' }, { value: 'A', label: 'A' }, { value: 'B', label: 'B' }, { value: 'C', label: 'C' }
     ], STATE.type, function (v) { STATE.type = v; STATE.typeSel = null; renderAll(); });
 
-    // Date range (native date inputs, bounded to the data).
-    if (document.activeElement !== refs.dFrom) { refs.dFrom.value = STATE.dateFrom; }
-    if (document.activeElement !== refs.dTo) { refs.dTo.value = STATE.dateTo; }
+    // Week range: an empty state means the first / last week of the data.
+    refs.dFrom.value = STATE.dateFrom || isoDate(WEEKS[0]);
+    refs.dTo.value = STATE.dateTo || isoDate(WEEKS[WEEKS.length - 1]);
 
     // Store / department dropdowns. Options come from the full dataset so they never shrink
     // to the current selection; a selection that no longer exists simply shows no rows.
@@ -793,15 +808,40 @@
     });
     // Date range: two native date inputs.
     var gd = el('div', 'fgroup');
-    gd.appendChild(el('div', 'flabel', 'Dates'));
+    gd.appendChild(el('div', 'flabel', 'Weeks'));
     var dr = el('div', 'daterange');
-    refs.dFrom = el('input', 'date-in'); refs.dFrom.type = 'date';
-    refs.dFrom.min = isoDate(WEEKS[0]); refs.dFrom.max = isoDate(WEEKS[WEEKS.length - 1]);
-    refs.dTo = el('input', 'date-in'); refs.dTo.type = 'date';
-    refs.dTo.min = refs.dFrom.min; refs.dTo.max = refs.dFrom.max;
-    refs.dFrom.addEventListener('change', function () { STATE.dateFrom = refs.dFrom.value; STATE.storeSel = null; renderAll(); });
-    refs.dTo.addEventListener('change', function () { STATE.dateTo = refs.dTo.value; STATE.storeSel = null; renderAll(); });
-    dr.appendChild(refs.dFrom); dr.appendChild(el('span', 'dash', '–')); dr.appendChild(refs.dTo);
+    // Week range selector: the data is weekly, so only the weeks that exist can be chosen.
+    var weekSelect = function () {
+      var sel = el('select', 'week-sel');
+      WEEKS.forEach(function (t) {
+        var o = document.createElement('option');
+        var d = new Date(t);
+        o.value = isoDate(t);
+        o.textContent = MONTHS[d.getUTCMonth()] + ' ' + (d.getUTCDate() < 10 ? '0' : '') + d.getUTCDate() + ', ' + d.getUTCFullYear();
+        sel.appendChild(o);
+      });
+      return sel;
+    };
+    refs.dFrom = weekSelect(); refs.dFrom.id = 'week-from';
+    refs.dTo = weekSelect(); refs.dTo.id = 'week-to';
+    var weekLabel = function (text, sel) {
+      var l = el('label', 'week-lbl', text); l.htmlFor = sel.id;
+      var w = el('div', 'week-field'); w.appendChild(l); w.appendChild(sel);
+      return w;
+    };
+    var firstWeek = isoDate(WEEKS[0]), lastWeek = isoDate(WEEKS[WEEKS.length - 1]);
+    var onWeekChange = function (changed) {
+      var f = refs.dFrom.value, t = refs.dTo.value;
+      // Keep the range valid: if the ends cross, move the other end to match.
+      if (f > t) { if (changed === 'from') { t = f; } else { f = t; } }
+      STATE.dateFrom = f === firstWeek ? '' : f;
+      STATE.dateTo = t === lastWeek ? '' : t;
+      STATE.storeSel = null;
+      renderAll();
+    };
+    refs.dFrom.addEventListener('change', function () { onWeekChange('from'); });
+    refs.dTo.addEventListener('change', function () { onWeekChange('to'); });
+    dr.appendChild(weekLabel('From', refs.dFrom)); dr.appendChild(weekLabel('To', refs.dTo));
     gd.appendChild(dr);
     filters.appendChild(gd);
     // Store (searchable) and department dropdowns.
